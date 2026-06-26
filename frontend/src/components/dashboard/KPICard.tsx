@@ -57,7 +57,7 @@ export function KPICard({
   delay = 0,
 }: KPICardProps) {
   // Dynamically get icon from lucide
-  const Icon = ((Icons as any)[iconName] || Icons.TrendingUp) as LucideIcon;
+  const Icon = ((Icons as Record<string, unknown>)[iconName] || Icons.TrendingUp) as LucideIcon;
 
   return (
     <motion.div

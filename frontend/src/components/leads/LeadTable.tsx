@@ -15,6 +15,31 @@ type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 10;
 
+interface SortHeaderProps {
+  label: string;
+  colKey: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
+}
+
+function SortHeader({ label, colKey, sortKey, sortDir, onSort }: SortHeaderProps) {
+  const active = sortKey === colKey;
+  return (
+    <button
+      onClick={() => onSort(colKey)}
+      className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+    >
+      {label}
+      {active ? (
+        sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+      ) : (
+        <span className="h-3 w-3 opacity-30">↕</span>
+      )}
+    </button>
+  );
+}
+
 export function LeadTable() {
   const { filteredLeads, selectedLeadIds, selectLead, deselectLead, selectAll, clearSelection } = useLeadStore();
   const leads = filteredLeads();
@@ -47,23 +72,6 @@ export function LeadTable() {
   const paginated = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
 
-  function SortHeader({ label, colKey }: { label: string; colKey: SortKey }) {
-    const active = sortKey === colKey;
-    return (
-      <button
-        onClick={() => handleSort(colKey)}
-        className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-      >
-        {label}
-        {active ? (
-          sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
-        ) : (
-          <span className="h-3 w-3 opacity-30">↕</span>
-        )}
-      </button>
-    );
-  }
-
   const allSelected = leads.length > 0 && leads.every((l) => selectedLeadIds.includes(l.id));
 
   return (
@@ -81,18 +89,42 @@ export function LeadTable() {
                   className="h-3.5 w-3.5 rounded border-[var(--border)] accent-[var(--accent-blue)]"
                 />
               </th>
-              <th className="px-4 py-3 text-left"><SortHeader label="Company" colKey="company" /></th>
+              <th className="px-4 py-3 text-left">
+                <SortHeader
+                  label="Company"
+                  colKey="company"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              </th>
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Contact</span>
               </th>
-              <th className="px-4 py-3 text-left"><SortHeader label="Score" colKey="leadScore" /></th>
+              <th className="px-4 py-3 text-left">
+                <SortHeader
+                  label="Score"
+                  colKey="leadScore"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              </th>
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Stage</span>
               </th>
               <th className="px-4 py-3 text-left">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Est. Value</span>
               </th>
-              <th className="px-4 py-3 text-left"><SortHeader label="Created" colKey="createdAt" /></th>
+              <th className="px-4 py-3 text-left">
+                <SortHeader
+                  label="Created"
+                  colKey="createdAt"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              </th>
               <th className="px-4 py-3" />
             </tr>
           </thead>

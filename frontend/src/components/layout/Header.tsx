@@ -9,6 +9,7 @@ import {
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { useUIStore } from "@/lib/store/useUIStore";
 import { GradientBadge } from "@/components/ui/gradient-badge";
+import type { Notification } from "@/lib/types";
 
 // Auto breadcrumb from pathname
 function useBreadcrumb() {
@@ -39,9 +40,61 @@ function useBreadcrumb() {
   ];
 }
 
+const typeEmoji: Record<string, string> = {
+  lead_found: "🟢",
+  email_opened: "💌",
+  lead_replied: "💬",
+  whatsapp_read: "📱",
+  meeting_scheduled: "📅",
+  proposal_accepted: "✅",
+};
+
+interface NotificationSectionProps {
+  title: string;
+  items: Notification[];
+  markRead: (id: string) => void;
+}
+
+function NotificationSection({ title, items, markRead }: NotificationSectionProps) {
+  if (!items.length) return null;
+  return (
+    <div>
+      <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+        {title}
+      </p>
+      {items.map((n) => (
+        <div
+          key={n.id}
+          onClick={() => markRead(n.id)}
+          className={cn(
+            "flex cursor-pointer gap-3 px-4 py-3 transition-colors hover:bg-[var(--surface)]",
+            !n.read && "bg-blue-50/50"
+          )}
+        >
+          <span className="text-xl flex-shrink-0 mt-0.5">{typeEmoji[n.type]}</span>
+          <div className="flex-1 min-w-0">
+            <p className={cn("text-sm font-medium text-[var(--text-primary)]", !n.read && "font-semibold")}>
+              {n.title}
+            </p>
+            <p className="text-xs text-[var(--text-secondary)] truncate-2 mt-0.5">
+              {n.description}
+            </p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              {formatRelativeTime(n.time)}
+            </p>
+          </div>
+          {!n.read && (
+            <div className="h-2 w-2 mt-1.5 rounded-full bg-[var(--accent-blue)] flex-shrink-0" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Notification panel
 function NotificationPanel() {
-  const { notifications, markAllRead, markRead, closeNotificationPanel } = useUIStore();
+  const { notifications, markAllRead, markRead } = useUIStore();
   const unread = notifications.filter((n) => !n.read);
   const today = notifications.filter((n) => {
     const d = new Date(n.time);
@@ -53,61 +106,6 @@ function NotificationPanel() {
     const now = new Date();
     return d.toDateString() !== now.toDateString();
   });
-
-  const typeConfig: Record<string, { color: string; bg: string }> = {
-    lead_found: { color: "text-emerald-600", bg: "bg-emerald-50" },
-    email_opened: { color: "text-blue-600", bg: "bg-blue-50" },
-    lead_replied: { color: "text-violet-600", bg: "bg-violet-50" },
-    whatsapp_read: { color: "text-teal-600", bg: "bg-teal-50" },
-    meeting_scheduled: { color: "text-orange-600", bg: "bg-orange-50" },
-    proposal_accepted: { color: "text-emerald-600", bg: "bg-emerald-50" },
-  };
-
-  const typeEmoji: Record<string, string> = {
-    lead_found: "🟢",
-    email_opened: "💌",
-    lead_replied: "💬",
-    whatsapp_read: "📱",
-    meeting_scheduled: "📅",
-    proposal_accepted: "✅",
-  };
-
-  function Section({ title, items }: { title: string; items: typeof notifications }) {
-    if (!items.length) return null;
-    return (
-      <div>
-        <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-          {title}
-        </p>
-        {items.map((n) => (
-          <div
-            key={n.id}
-            onClick={() => markRead(n.id)}
-            className={cn(
-              "flex cursor-pointer gap-3 px-4 py-3 transition-colors hover:bg-[var(--surface)]",
-              !n.read && "bg-blue-50/50"
-            )}
-          >
-            <span className="text-xl flex-shrink-0 mt-0.5">{typeEmoji[n.type]}</span>
-            <div className="flex-1 min-w-0">
-              <p className={cn("text-sm font-medium text-[var(--text-primary)]", !n.read && "font-semibold")}>
-                {n.title}
-              </p>
-              <p className="text-xs text-[var(--text-secondary)] truncate-2 mt-0.5">
-                {n.description}
-              </p>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
-                {formatRelativeTime(n.time)}
-              </p>
-            </div>
-            {!n.read && (
-              <div className="h-2 w-2 mt-1.5 rounded-full bg-[var(--accent-blue)] flex-shrink-0" />
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <motion.div
@@ -138,8 +136,8 @@ function NotificationPanel() {
 
       {/* Content */}
       <div className="max-h-[520px] overflow-y-auto">
-        <Section title="Today" items={today} />
-        <Section title="Earlier" items={older} />
+        <NotificationSection title="Today" items={today} markRead={markRead} />
+        <NotificationSection title="Earlier" items={older} markRead={markRead} />
         {notifications.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-[var(--text-muted)]">
             <Bell className="h-8 w-8 mb-2 opacity-40" />

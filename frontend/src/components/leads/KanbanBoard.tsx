@@ -103,7 +103,7 @@ function KanbanColumn({
       >
         <AnimatePresence>
           {leads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-24 text-[var(--text-muted)] text-xs">
+            <div key="empty" className="flex flex-col items-center justify-center h-24 text-[var(--text-muted)] text-xs">
               <p>Drop leads here</p>
             </div>
           ) : (

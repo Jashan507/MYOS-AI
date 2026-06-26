@@ -29,7 +29,7 @@ export default function LeadFinderPage() {
   }
 
   function saveAll() {
-    results.forEach((lead) => addLead({ ...lead, id: `saved_${lead.id}_${Date.now()}` }));
+    results.forEach((lead) => addLead({ ...lead, id: `saved_${lead.id}` }));
   }
 
   return (
@@ -117,7 +117,7 @@ export default function LeadFinderPage() {
                     key={lead.id}
                     lead={lead}
                     delay={i * 0.05}
-                    onSave={() => addLead(lead)}
+                    onSave={() => addLead({ ...lead, id: `saved_${lead.id}` })}
                     onEmail={() => {}}
                     onWhatsApp={() => {}}
                     onProposal={() => {}}

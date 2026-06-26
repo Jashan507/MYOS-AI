@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { LayoutGrid, List, Filter, Search, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,12 @@ type ViewMode = "kanban" | "table";
 
 export default function LeadDatabasePage() {
   const [view, setView] = useState<ViewMode>("kanban");
-  const { filteredLeads, setFilter, filters } = useLeadStore();
+  const { filteredLeads, setFilter, filters, fetchLeads } = useLeadStore();
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
+
   const leads = filteredLeads();
 
   const stats = {

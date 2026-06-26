@@ -30,6 +30,14 @@ const aiResponses = [
   "I've analyzed your last 30 days of outreach data. Key insight: emails sent Tuesday–Thursday between 9–11 AM get 34% higher open rates. Shall I automatically reschedule your pending campaigns?",
 ];
 
+function generateMessageId(offset = 0) {
+  return (Date.now() + offset).toString();
+}
+
+function getTypingDelay() {
+  return 1200 + Math.random() * 800;
+}
+
 export function AIAssistant() {
   const { aiAssistantOpen, toggleAIAssistant } = useUIStore();
   const [messages, setMessages] = useState<Message[]>([
@@ -53,7 +61,7 @@ export function AIAssistant() {
     if (!text.trim()) return;
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: generateMessageId(),
       role: "user",
       content: text,
       time: new Date(),
@@ -69,7 +77,7 @@ export function AIAssistant() {
       responseIndex.current++;
 
       const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: generateMessageId(1),
         role: "assistant",
         content: response,
         time: new Date(),
@@ -77,7 +85,7 @@ export function AIAssistant() {
 
       setIsTyping(false);
       setMessages((prev) => [...prev, aiMsg]);
-    }, 1200 + Math.random() * 800);
+    }, getTypingDelay());
   }
 
   return (

@@ -180,7 +180,7 @@ export function LeadCard({ lead, onSave, onEmail, onWhatsApp, onProposal, delay 
       {/* Outreach angle */}
       {lead.outreachAngle && !compact && (
         <p className="text-[12px] text-[var(--text-secondary)] italic leading-relaxed line-clamp-2">
-          "{lead.outreachAngle}"
+          {"\"" + lead.outreachAngle + "\""}
         </p>
       )}
 

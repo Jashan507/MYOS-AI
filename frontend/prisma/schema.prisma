@@ -1,0 +1,435 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── AUTH ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  avatar        String?
+  role          UserRole  @default(FREELANCER)
+  plan          PlanType  @default(FREE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  workspaces    WorkspaceMember[]
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String? @db.Text
+  refreshToken      String? @db.Text
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// ─── WORKSPACE ────────────────────────────────────────
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  plan      PlanType @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      WorkspaceMember[]
+  leads        Lead[]
+  campaigns    Campaign[]
+  proposals    Proposal[]
+  templates    EmailTemplate[]
+  integrations Integration[]
+  aiSettings   AISettings?
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String          @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole   @default(MEMBER)
+  joinedAt    DateTime        @default(now())
+
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// ─── LEADS ────────────────────────────────────────────
+
+model Lead {
+  id                String        @id @default(cuid())
+  workspaceId       String
+  company           String
+  website           String?
+  industry          String?
+  companySize       String?
+  country           String?
+  city              String?
+  
+  // Contact
+  contactName       String?
+  contactTitle      String?
+  email             String?
+  phone             String?
+  whatsapp          String?
+  linkedin          String?
+
+  // AI Generated
+  painPoints        String[]
+  icebreaker        String?       @db.Text
+  outreachAngle     String?       @db.Text
+  estimatedValue    String?
+  leadScore         Int           @default(0)
+  aiConfidence      Int           @default(0)
+
+  // Pipeline
+  stage             LeadStage     @default(NEW)
+  tags              String[]
+  notes             String?       @db.Text
+  dealValue         Decimal?      @db.Decimal(12, 2)
+  
+  // Metadata
+  source            LeadSource    @default(AI_FINDER)
+  isArchived        Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  emails            EmailLog[]
+  whatsappLogs      WhatsAppLog[]
+  proposals         Proposal[]
+  activities        Activity[]
+  campaignLeads     CampaignLead[]
+
+  @@index([workspaceId, stage])
+  @@index([workspaceId, createdAt])
+  @@map("leads")
+}
+
+// ─── PROPOSALS ────────────────────────────────────────
+
+model Proposal {
+  id            String          @id @default(cuid())
+  workspaceId   String
+  leadId        String?
+  title         String
+  status        ProposalStatus  @default(DRAFT)
+  
+  // Input
+  projectType   String?
+  budget        String?
+  timeline      String?
+  requirements  String?         @db.Text
+  
+  // AI Generated Content (JSON)
+  content       Json?           // Full proposal sections
+  
+  // Sharing
+  shareToken    String?         @unique @default(cuid())
+  isPublic      Boolean         @default(false)
+  viewCount     Int             @default(0)
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  expiresAt     DateTime?
+
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id])
+  lead          Lead?           @relation(fields: [leadId], references: [id])
+
+  @@map("proposals")
+}
+
+// ─── CAMPAIGNS ────────────────────────────────────────
+
+model Campaign {
+  id            String          @id @default(cuid())
+  workspaceId   String
+  name          String
+  type          CampaignType    @default(EMAIL)
+  status        CampaignStatus  @default(DRAFT)
+  
+  // Config (JSON: schedule, delays, conditions)
+  config        Json            @default("{}")
+  
+  // Stats (denormalized for performance)
+  totalLeads    Int             @default(0)
+  emailsSent    Int             @default(0)
+  opens         Int             @default(0)
+  clicks        Int             @default(0)
+  replies       Int             @default(0)
+  conversions   Int             @default(0)
+  
+  scheduledAt   DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id])
+  leads         CampaignLead[]
+  emails        EmailLog[]
+  automationSteps AutomationStep[]
+
+  @@index([workspaceId, status])
+  @@map("campaigns")
+}
+
+model CampaignLead {
+  id          String    @id @default(cuid())
+  campaignId  String
+  leadId      String
+  status      String    @default("pending")
+  addedAt     DateTime  @default(now())
+
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
+  lead        Lead      @relation(fields: [leadId], references: [id])
+
+  @@unique([campaignId, leadId])
+  @@map("campaign_leads")
+}
+
+// ─── AUTOMATION ────────────────────────────────────────
+
+model AutomationStep {
+  id          String    @id @default(cuid())
+  campaignId  String
+  type        String    // trigger | action | condition | delay
+  name        String
+  config      Json      @default("{}")
+  order       Int
+  
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
+
+  @@map("automation_steps")
+}
+
+// ─── EMAIL LOGS ────────────────────────────────────────
+
+model EmailLog {
+  id          String      @id @default(cuid())
+  workspaceId String
+  leadId      String?
+  campaignId  String?
+  
+  to          String
+  subject     String
+  body        String      @db.Text
+  
+  status      EmailStatus @default(PENDING)
+  resendId    String?     // Resend message ID for tracking
+  
+  openedAt    DateTime?
+  clickedAt   DateTime?
+  repliedAt   DateTime?
+  bouncedAt   DateTime?
+  
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+
+  lead        Lead?       @relation(fields: [leadId], references: [id])
+  campaign    Campaign?   @relation(fields: [campaignId], references: [id])
+
+  @@index([leadId])
+  @@index([campaignId])
+  @@map("email_logs")
+}
+
+// ─── WHATSAPP LOGS ─────────────────────────────────────
+
+model WhatsAppLog {
+  id          String    @id @default(cuid())
+  leadId      String
+  to          String
+  message     String    @db.Text
+  type        String    @default("text") // text | template | media
+  
+  waMessageId String?   // Meta's message ID
+  status      String    @default("pending") // sent | delivered | read | failed
+  
+  deliveredAt DateTime?
+  readAt      DateTime?
+  repliedAt   DateTime?
+  
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  lead        Lead      @relation(fields: [leadId], references: [id])
+
+  @@map("whatsapp_logs")
+}
+
+// ─── EMAIL TEMPLATES ────────────────────────────────────
+
+model EmailTemplate {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  subject     String
+  body        String    @db.Text
+  variables   String[]  // e.g. ["{{firstName}}", "{{company}}"]
+  type        String    @default("cold_email") // cold_email | follow_up | proposal
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@map("email_templates")
+}
+
+// ─── ACTIVITY LOG ──────────────────────────────────────
+
+model Activity {
+  id          String    @id @default(cuid())
+  leadId      String
+  type        String    // email_sent | email_opened | whatsapp_sent | replied | stage_changed | note_added
+  description String
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+
+  lead        Lead      @relation(fields: [leadId], references: [id])
+
+  @@index([leadId, createdAt])
+  @@map("activities")
+}
+
+// ─── INTEGRATIONS ──────────────────────────────────────
+
+model Integration {
+  id          String    @id @default(cuid())
+  workspaceId String
+  provider    String    // gmail | outlook | whatsapp | linkedin | apollo | stripe
+  status      String    @default("disconnected") // connected | disconnected | error
+  config      Json      @default("{}") // encrypted tokens + settings
+  connectedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, provider])
+  @@map("integrations")
+}
+
+// ─── AI SETTINGS ───────────────────────────────────────
+
+model AISettings {
+  id                String    @id @default(cuid())
+  workspaceId       String    @unique
+  provider          String    @default("openai") // openai | anthropic
+  model             String    @default("gpt-4o")
+  temperature       Float     @default(0.7)
+  customApiKey      String?   // User's own key
+  leadFinderPrompt  String?   @db.Text
+  emailTone         String    @default("professional") // professional | casual | friendly
+  proposalStyle     String    @default("detailed")
+  
+  workspace         Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@map("ai_settings")
+}
+
+// ─── ENUMS ─────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  FREELANCER
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum PlanType {
+  FREE
+  STARTER
+  PRO
+  AGENCY
+}
+
+enum LeadStage {
+  NEW
+  CONTACT_READY
+  EMAIL_SENT
+  WHATSAPP_SENT
+  REPLIED
+  MEETING_SCHEDULED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadSource {
+  AI_FINDER
+  MANUAL
+  IMPORT
+  API
+  REFERRAL
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum CampaignType {
+  EMAIL
+  WHATSAPP
+  COMBINED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  REPLIED
+  BOUNCED
+  FAILED
+}
